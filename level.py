@@ -399,7 +399,7 @@ class Level:
 
     def get_death(self):
         if self.player_sprite.rect.midtop[1] >= self.sett.screen_height * 2 or self.sett.player_dead:
-            pygame.mixer.Sound("./audio/sfx/playerDeath.wav").play()
+            pygame.mixer.Sound("./audio/sfx/playerDeath.ogg").play()
             self.sett.player_dead = False
             self.sett.reload_level = True
             self.sett.score = self.old_score

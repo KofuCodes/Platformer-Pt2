@@ -1,18 +1,21 @@
 import pygame
 from support import import_folder
-import tkinter as tk
 from special import Special
-
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, surface, create_jump_particles, sett):
         super().__init__()
-        self.dashSound = pygame.mixer.Sound("./audio/sfx/dash.wav")
-        self.jumpSound = pygame.mixer.Sound("./audio/sfx/jump.wav")
-        self.hitSound = pygame.mixer.Sound("./audio/sfx/hit.wav")
-        self.attackSound = pygame.mixer.Sound("./audio/sfx/attack.wav")
+        self.dashSound = pygame.mixer.Sound("./audio/sfx/dash.ogg")
+        self.jumpSound = pygame.mixer.Sound("./audio/sfx/jump.ogg")
+        self.hitSound = pygame.mixer.Sound("./audio/sfx/hit.ogg")
+        self.attackSound = pygame.mixer.Sound("./audio/sfx/attack.ogg")
 
         self.sett = sett
+        
+        # Add text input state
+        self.entering_level = False
+        self.level_input = ""
+        self.font = pygame.font.Font(None, 36)
 
         self.import_character_assets()
 
@@ -57,26 +60,7 @@ class Player(pygame.sprite.Sprite):
         self.attack_hitbox = pygame.Rect(0, 0, 100, 100)
 
         self.specials = []
-
         self.load_specials()
-
-        # self.can_dash = True
-
-        '''        if (not self.can_dash) and -1 <= self.direction.x <= 1:
-            self.has_gravity = True
-
-        if keys[pygame.K_LSHIFT] and self.can_dash and self.sett.charge['dash'] >= 120:
-            self.can_dash = False
-            self.has_gravity = False
-            self.sett.charge['dash'] = 0
-            if self.facing_right:
-                self.direction.x = 3
-            else:
-                self.direction.x = -3
-
-        if (not keys[pygame.K_LSHIFT]) and 1 >= self.direction.x >= -1:
-            self.can_dash = True
-            self.has_gravity = True'''
 
     def load_specials(self):
         def dashability(charge, max_charge, key, keys, can_use):
@@ -101,6 +85,37 @@ class Player(pygame.sprite.Sprite):
 
         self.specials.append(Special(dashability, dashpre, dashpost, 'dash', 120, pygame.K_c, self.sett))
 
+    def handle_level_input(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                if self.level_input:  # Only process if there's actual input
+                    self.sett.set_level(self.level_input)
+                self.entering_level = False
+                self.level_input = ""
+            elif event.key == pygame.K_BACKSPACE:
+                self.level_input = self.level_input[:-1]
+            elif event.unicode.isdigit() or event.unicode.isalpha():
+                self.level_input += event.unicode
+
+    def draw_level_input(self):
+        if self.entering_level:
+            # Create a background rect
+            input_surface = self.font.render(self.level_input + "_", True, (255, 255, 255))
+            input_rect = input_surface.get_rect(center=(self.display_surface.get_width() // 2, 
+                                                      self.display_surface.get_height() // 2))
+            
+            # Draw background
+            padding = 10
+            bg_rect = pygame.Rect(input_rect.x - padding, 
+                                input_rect.y - padding,
+                                input_rect.width + (padding * 2), 
+                                input_rect.height + (padding * 2))
+            pygame.draw.rect(self.display_surface, (0, 0, 0), bg_rect)
+            pygame.draw.rect(self.display_surface, (255, 255, 255), bg_rect, 2)
+            
+            # Draw text
+            self.display_surface.blit(input_surface, input_rect)
+
     def import_character_assets(self):
         character_path = "./graphics/character/"
         self.animations = {"idle": [], "run": [], "jump": [], "fall": [], "attack": [], "hit": []}
@@ -119,7 +134,7 @@ class Player(pygame.sprite.Sprite):
         if self.frame_index >= len(animation):
             self.frame_index = 0
             if self.status == 'attack':
-                self.is_attacking = False  # Reset attack status after animation completes
+                self.is_attacking = False
 
         image = animation[int(self.frame_index)]
         image = pygame.transform.scale(image, (22 * self.sett.tile_size_mult, 22 * self.sett.tile_size_mult))
@@ -129,7 +144,6 @@ class Player(pygame.sprite.Sprite):
             flipped_image = pygame.transform.flip(image, True, False)
             self.image = flipped_image
 
-        # Update the rect position based on the new image
         if self.on_ground and self.on_right:
             self.rect = self.image.get_rect(bottomright=self.rect.bottomright)
         elif self.on_ground and self.on_left:
@@ -164,15 +178,16 @@ class Player(pygame.sprite.Sprite):
         if current_time - self.last_attack_time >= self.attack_cooldown:
             self.is_attacking = True
             self.last_attack_time = current_time
-            self.attackSound.play()  # Play the attack sound
-            # Update the attack hitbox position based on the player's facing direction
+            self.attackSound.play()
             if self.facing_right:
                 self.attack_hitbox.topleft = self.rect.topright
             else:
                 self.attack_hitbox.topright = self.rect.topleft
 
-
     def get_input(self):
+        if self.entering_level:
+            return
+            
         keys = pygame.key.get_pressed()
 
         if self.direction.x > 0 and self.on_right:
@@ -222,39 +237,12 @@ class Player(pygame.sprite.Sprite):
         if not keys[pygame.K_z]:
             self.can_jump = True
 
-        if keys[pygame.K_x]:  # Assuming 'X' is for attacking
+        if keys[pygame.K_x]:
             self.attack()
 
         if keys[pygame.K_0]:
-            frame = tk.Tk()
-            frame.title("TextBox Input")
-            frame.geometry('100x50')
-
-            frame.focus()
-
-            inputtxt = tk.Text(frame,
-                               height=1,
-                               width=10)
-
-            inputtxt.pack()
-
-            inputtxt.focus()
-
-            def keyup(e):
-                if e.keycode == 13:
-                    new_level()
-
-            inputtxt.bind("<KeyRelease>", keyup)
-
-            def new_level():
-                inp = inputtxt.get(1.0, "end-1c")
-                self.sett.set_level(inp.replace("\n", ""))
-                frame.destroy()
-
-            printButton = tk.Button(frame, text="Set Level", command=new_level)
-            printButton.pack()
-
-            frame.mainloop()
+            self.entering_level = True
+            self.level_input = ""
 
     def get_status(self):
         if self.is_attacking:
@@ -291,3 +279,4 @@ class Player(pygame.sprite.Sprite):
         self.get_status()
         self.animate()
         self.run_dust_animation()
+        self.draw_level_input()

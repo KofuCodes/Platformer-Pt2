@@ -6,8 +6,8 @@ import math
 class Enemy(AnimatedTile):
     def __init__(self,pos,sizex,sizey,sett):
         super().__init__(pos,sizex, sizey,'./graphics/enemy', sett)
-        self.deathSound = pygame.mixer.Sound("./audio/sfx/enemyKill.wav")
-        self.scoreUp = pygame.mixer.Sound("./audio/sfx/pickupCoin.wav")
+        self.deathSound = pygame.mixer.Sound("./audio/sfx/enemyKill.ogg")
+        self.scoreUp = pygame.mixer.Sound("./audio/sfx/pickupCoin.ogg")
         self.rect.y += (sizex * sett.tile_size_mult) - self.image.get_size()[1]
         self.floor = self.rect.y
         self.speed = 0.1
